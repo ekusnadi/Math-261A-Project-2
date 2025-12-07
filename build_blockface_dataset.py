@@ -8,7 +8,7 @@ parking_meters = pd.read_csv(base_path + r'\Parking_Meters.csv')
 citations = pd.read_csv(base_path + r'\SFMTA_Meter_Citations_2025.csv')
 
 parking_meters = parking_meters[parking_meters['ACTIVE_METER_FLAG'].isin(['M', 'T'])]
-pm_cols_to_keep = ['OBJECTID', 'MS_PAY_STATION_ID', 'MS_SPACE_NUM', 'ON_OFFSTREET_TYPE', 'PM_DISTRICT_ID', 'BLOCKFACE_ID', 'METER_TYPE', 'CAP_COLOR',
+pm_cols_to_keep = ['OBJECTID', 'MS_PAY_STATION_ID', 'MS_SPACE_NUM', 'ON_OFFSTREET_TYPE', 'BLOCKFACE_ID', 'METER_TYPE', 'CAP_COLOR',
        'STREET_ID', 'STREET_NAME', 'STREET_NUM', 'supervisor_district']
 parking_meters = parking_meters[pm_cols_to_keep]
 parking_meters['STREET_NUM'] = (
@@ -124,7 +124,6 @@ blockface_features = (
     .agg(
         street_name=('STREET_NAME', majority),
         supervisor_district=('supervisor_district', majority),
-        pm_district_id=('PM_DISTRICT_ID', majority),
         meter_count=('OBJECTID', 'count'),
         min_street_num=('STREET_NUM', 'min'),
         max_street_num=('STREET_NUM', 'max'),
@@ -161,5 +160,5 @@ blockfaces['citation_rate_per_meter'] = (
 blockfaces['log_rate'] = np.log1p(blockfaces['citation_rate_per_meter'])
 
 
-output_path = base_path + r'\blockface_regression_dataset.csv'
+output_path = base_path + r'\blockface_regression_dataset_2025.csv'
 blockfaces.to_csv(output_path, index=False)
