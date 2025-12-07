@@ -1,5 +1,21 @@
-# Math-261A-Project-2
+# Math 261A Project 2
 
 ## Author & Submission Info
 - **Author:** Ethan Kusnadi  
-- **Date of Submission:** 
+- **Date of Submission:**  
+
+## Project Structure
+- **Data Processing Script:** `build_blockface_dataset.py`  
+  Python script that constructs the blockface-level dataset by cleaning and merging parking meter and citation data, parsing street numbers, applying parity matching, resolving ambiguous matches, and computing citation rates per meter.
+
+- **Output Dataset:** `blockface_regression_dataset_2025.csv`  
+  Final regression-ready dataset used in the paper. 
+
+- **Raw Data:**  
+  - `Parking_Meters.csv` – Raw SFMTA Parking Meters dataset. 
+  - `SFMTA_Meter_Citations_2025.csv` – Raw SFMTA Parking Meter Citations dataset for 2025.  
+  *(Included locally for reproducibility.)*
+
+- **References:** `references.bib`  
+  BibTeX file containing all sources cited in the report.
+
