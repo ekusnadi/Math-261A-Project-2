@@ -1,11 +1,13 @@
 import pandas as pd
 import re
 import numpy as np
+from pathlib import Path
 
-base_path = r'C:\Users\ebkus\OneDrive\Documents\Math 261A - Gao\Project 2'
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent / "data"
 
-parking_meters = pd.read_csv(base_path + r'\Parking_Meters.csv')
-citations = pd.read_csv(base_path + r'\SFMTA_Meter_Citations_2025.csv')
+parking_meters = pd.read_csv(DATA_DIR / "Parking_Meters.csv")
+citations = pd.read_csv(DATA_DIR / "SFMTA_Meter_Citations_2025.csv")
 
 parking_meters = parking_meters[parking_meters['ACTIVE_METER_FLAG'].isin(['M', 'T'])]
 pm_cols_to_keep = ['OBJECTID', 'MS_PAY_STATION_ID', 'MS_SPACE_NUM', 'ON_OFFSTREET_TYPE', 'BLOCKFACE_ID', 'METER_TYPE', 'CAP_COLOR',
@@ -160,5 +162,5 @@ blockfaces['citation_rate_per_meter'] = (
 blockfaces['log_rate'] = np.log1p(blockfaces['citation_rate_per_meter'])
 
 
-output_path = base_path + r'\blockface_regression_dataset_2025.csv'
+output_path = DATA_DIR / "blockface_regression_dataset_2025.csv"
 blockfaces.to_csv(output_path, index=False)
