@@ -19,8 +19,9 @@
     Final regression-ready blockface dataset produced by the processing script.  
   *(Raw data is included locally for reproducibility.)*
 
-- **references.bib**  
-  BibTeX file containing all sources cited in the report.
+- **paper/**
+  - **references.bib**  
+    BibTeX file containing all sources cited in the report.
 
 ## Dataset License
 The **Parking Meters** and **SFMTA - Parking Citations & Fines** datasets are published by the San Francisco Municipal Transportation Agency (SFMTA) on the DataSF Open Data Portal.
