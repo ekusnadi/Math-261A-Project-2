@@ -5,7 +5,6 @@
 - **Date of Submission:**  December 10, 2025
 
 ## Project Structure
-
 - **scripts/**
   - `build_blockface_dataset.py`  
     Python script that constructs the blockface-level dataset by cleaning and merging parking meter and citation data, parsing street numbers, applying parity-based matching, resolving ambiguous citation-to-blockface matches, and computing citation rates per meter.  
@@ -17,10 +16,9 @@
     Raw SFMTA parking meter citation dataset for 2025.  
   - `blockface_regression_dataset_2025.csv`  
     Final regression-ready blockface dataset produced by the processing script.  
-  *(Raw data is included locally for reproducibility.)*
 
 - **paper/**
-  - **references.bib**  
+  - `references.bib`  
     BibTeX file containing all sources cited in the report.
 
 ## External Resources
