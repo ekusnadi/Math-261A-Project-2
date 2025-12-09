@@ -25,6 +25,7 @@
 This project used **ChatGPT (GPT-5.1, OpenAI, 2025)** as an external resource. ChatGPT was used for:  
 - Feedback and assistance in revising the clarity, organization, and flow of writing
 - Suggestions for formatting R code and visualizations
+- Drafting and refining the Python script for data cleaning and merging
 - Guidance on meeting project guidelines and rubric requirements
 - Assistance compiling the reference list and drafting this README file
 - Converting the report into Quarto format
@@ -32,8 +33,8 @@ This project used **ChatGPT (GPT-5.1, OpenAI, 2025)** as an external resource. C
 All base code, data analysis, and interpretation of results were performed independently by the author.  
 
 ## Dataset License
-The **Parking Meters** and **SFMTA - Parking Citations & Fines** datasets are published by the San Francisco Municipal Transportation Agency (SFMTA) on the DataSF Open Data Portal.
-DataSF provides these datasets under the Open Data Commons Public Domain Dedication and License (PDDL), which permits reuse, modification, and redistribution without restriction.
+The **Parking Meters** and **SFMTA - Parking Citations & Fines** datasets are published by the San Francisco Municipal Transportation Agency (SFMTA) on the [DataSF Open Data Portal](https://data.sfgov.org/).
+DataSF provides these datasets under the [Open Data Commons Public Domain Dedication and License (PDDL)](http://opendatacommons.org/licenses/pddl/1.0/), which permits reuse, modification, and redistribution without restriction.
 
 ## Acknowledgments
 This project repository is based on the template provided by [Rohan Alexander](https://github.com/RohanAlexander/starter_folder/tree/main).
