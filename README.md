@@ -23,6 +23,19 @@
   - **references.bib**  
     BibTeX file containing all sources cited in the report.
 
+## External Resources
+This project used **ChatGPT (GPT-5.1, OpenAI, 2025)** as an external resource. ChatGPT was used for:  
+- Feedback and assistance in revising the clarity, organization, and flow of writing
+- Suggestions for formatting R code and visualizations
+- Guidance on meeting project guidelines and rubric requirements
+- Assistance compiling the reference list and drafting this README file
+- Converting the report into Quarto format
+
+All base code, data analysis, and interpretation of results were performed independently by the author.  
+
 ## Dataset License
 The **Parking Meters** and **SFMTA - Parking Citations & Fines** datasets are published by the San Francisco Municipal Transportation Agency (SFMTA) on the DataSF Open Data Portal.
 DataSF provides these datasets under the Open Data Commons Public Domain Dedication and License (PDDL), which permits reuse, modification, and redistribution without restriction.
+
+## Acknowledgments
+This project repository is based on the template provided by [Rohan Alexander](https://github.com/RohanAlexander/starter_folder/tree/main).
