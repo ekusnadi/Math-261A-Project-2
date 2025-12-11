@@ -5,10 +5,6 @@
 - **Date of Submission:**  December 10, 2025
 
 ## Project Structure
-- **scripts/**
-  - `build_blockface_dataset.py`  
-    Python script that constructs the blockface-level dataset by cleaning and merging parking meter and citation data, parsing street numbers, applying parity-based matching, resolving ambiguous citation-to-blockface matches, and computing citation rates per meter.  
-
 - **data/**
   - `Parking_Meters.csv`  
     Raw SFMTA Parking Meters dataset.
@@ -18,8 +14,19 @@
     Final regression-ready blockface dataset produced by the processing script.  
 
 - **paper/**
+  - `Paper2_Meter_CitationRates_Kusnadi.pdf`  
+    Final version of the paper exploring the relationship between parking meter density and citation rates in San Francisco.
+  - `Paper2_Meter_CitationRates_Kusnadi.qmd`  
+    Source file used to generate the report in Quarto, containing all R code for regression modeling and visualization.
   - `references.bib`  
     BibTeX file containing all sources cited in the report.
+  
+
+- **scripts/**
+  - `build_blockface_dataset.py`  
+    Python script that constructs the blockface-level dataset by cleaning and merging parking meter and citation data, parsing street numbers, applying parity-based matching, resolving ambiguous citation-to-blockface matches, and computing citation rates per meter.  
+  - `regression_analysis`  
+    R script containing all analysis and plotting code. The same code is also included in the Quarto file where it is executed to produce the results in the paper.
 
 ## External Resources
 This project used **ChatGPT (GPT-5.1, OpenAI, 2025)** as an external resource. ChatGPT was used for:  
