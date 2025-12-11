@@ -1,0 +1,353 @@
+---
+title: "Exploring the Relationship Between Parking Meter Density and Citation Rates in San Francisco."
+author: "Ethan Kusnadi"
+thanks: "Project repository available at: [https://github.com/ekusnadi/Math-261A-Project-2](https://github.com/ekusnadi/Math-261A-Project-2)."
+date: 2025-12-10
+date-format: long
+abstract: |
+  This project investigates how parking meter density is associated with citation rates in San Francisco using data published by the SFMTA. We fit a multiple linear regression model that includes meter density, cap color, and supervisor district as predictors. This model shows a slight positive association between meter density and citation rates, but it has limited explanatory power, suggesting that other factors likely play a larger role in determining citation activity. Future work could incorporate more predictors or explore alternative approaches such as weighted least squares. 
+format: 
+  pdf:
+    header-includes:
+      - \usepackage{caption}
+      - \captionsetup{font=small}
+bibliography: references.bib
+number-sections: true
+---
+
+# Introduction
+
+Parking meters are an important part of American city infrastructure, serving as a form of regulation to manage street parking. Because this system relies on drivers paying for their allotted time at a meter, rules are only enforced when parking monitors patrol a given area. As a result, inconsistent enforcement or differences in neighborhood traffic patterns can cause citation rates to vary across a city. This raises the question of which characteristics influence citation activity. 
+
+Previous studies have examined illegal parking behavior by relating drivers’ dwell times to the probability of receiving a citation [@nourinejad2020illegal]. 
+Other work has explored how parking enforcement varies across neighborhoods, finding that citation rates tend to be higher in economically vulnerable and historically marginalized areas [@brazil2024neighborhood]. 
+However, there has been little research on how the design of the city itself, such as the density of parking meters, is associated with the citation rate. In this project, we investigate the question: How is parking meter density associated with citation rates per meter in San Francisco, after accounting for meter rate and supervisor district?
+
+Parking meter and citation data from the San Francisco Municipal Transportation Agency (SFMTA) were used to fit a multiple regression model to predict the log-transformed citation rate per meter using R [@sfmta_parking_meters, @sfmta_parking_citations]. The analysis suggests a slight positive relationship between parking meter density and citation rate, but the model explains only a small percentage of the variance in the response, and other factors may contribute more to citation rates. 
+
+The remainder of this paper is structured as follows: Section 2 introduces the dataset and describes the data cleaning process, Section 3 explains the methods and models used in the analysis, Section 4 presents the results, and Section 5 discusses possible further explorations. 
+
+# Data
+
+The data used for this project are sourced from the DataSF Open Data Portal and are provided by the San Francisco Municipal Transportation Agency (SFMTA), a government agency. The raw data can be downloaded from the online portal as CSV files.
+
+The Parking Meters dataset is created by the SFMTA and maintained through the SFpark data warehouse (Parking Space Inventory) [@sfmta_parking_meters]. This dataset contains the locations and key attributes of parking meters in San Francisco, with the most recent public update released in November 2025. Meter shop staff update the dataset periodically to reflect new regulations and operational changes. We filtered for active and temporarily inactive meters only, leaving $30,678$ meters in the dataset. The variables used in this analysis include:
+
+-   `BLOCKFACE_ID`: the ID of a blockface, which is the side of a street where a meter is located.
+-   `ACTIVE_METER_FLAG`: indicates whether the meter is active.
+-   `CAP_COLOR`: meter rate zone, coded by color:
+    -   Black – Motorcycle parking
+    -   Brown – Tour bus parking
+    -   Green – Short-term parking
+    -   Grey – General metered parking
+    -   Red – Six-wheeled commercial vehicle parking
+    -   Yellow – Commercial vehicle parking
+-   `STREET_NAME`: the name of the street.
+-   `STREET_NUM`: the approximate street number of the meter.
+-   `supervisor_district`: the City Supervisor district in which the meter is located, with 11 districts in total.
+
+The second dataset is the SFMTA – Parking Citations & Fines dataset, which is updated daily and includes violation, location, and vehicle information [@sfmta_parking_citations]. For this project, we restrict the data to 2025 parking meter violations, corresponding to violation codes TRC7.2.23A, TRC7.2.23B, TRC7.2.30C, and TRC7.2.30D. As of December 6, 2025, the filtered dataset contains 224,550 parking meter citations. For this analysis, we use the `Citation Location` field, which provides the street address where the citation was issued.
+
+The observational unit in this analysis is the blockface. Because there is human error involved in recording individual parking meters and street addresses, we aggregate meters by blockface and record how many citations were associated with meters on that blockface. Using a Python script, we constructed a blockface-level dataset by cleaning and merging the parking meter and citation data [@PythonSoftwareFoundation]. Citation street addresses are parsed into street numbers and names. A citation is assigned to a blockface if its street number falls within the meter-defined number range for that blockface and matches the street-number parity. We then count the number of citations corresponding to each blockface and calculate the citation rate per meter. For attributes such as cap color and supervisor district, we take the class majority as the blockface attribute.
+
+After merging, $163,754$ citations ($72.9\%$) are matched to a blockface. Unmatched citations may correspond to new or recently deactivated meters not yet updated in the Parking Meters dataset. They may also come from meters having inaccurate or missing street-number records or from citation locations with data entry errors. These unmatched observations may introduce bias if citation recording errors are correlated with blockface characteristics.
+
+In total, the final blockface-level dataset contains 2,926 blockfaces. The dataset includes, for each blockface:
+
+-   `meter_count`: the number of meters on the blockface. Because density is defined at the blockface level, `meter_count` serves as the measure of meter density and is used interchangeably with it throughout the analysis.
+-   `citation_count`: the number of citations whose location matched the blockface’s street-number range and parity.
+-   `citation_rate_per_meter`: `citation_count` divided by `meter_count`.
+-   `log_rate`: $\log(\mathrm{citation\_rate\_per\_meter} + 1)$.
+-   `cap_color_majority`: cap color most common across meters on the blockface.
+-   `supervisor_district`: assigned using the majority of meters on the blockface.
+
+The distribution of citation rates per meter is heavily right-skewed, with most blockfaces receiving relatively few citations per meter and a small number of blockfaces receiving much higher rates, seen in @fig-citation-dist. This skewness violates the linear regression assumption of approximately normally distributed residuals. To address this, we choose to model the natural log-transformed citation rate instead, using $\log(\mathrm{citation\_rate\_per\_meter} + 1)$ as the response variable, where adding $1$ allows blockfaces with zero citations to be included while avoiding undefined values. This transformation produces a distribution that is much closer to normal, making it more suitable as the response variable in our regression model.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+blockfaces <- read_csv("../data/blockface_regression_dataset_2025.csv", show_col_types = FALSE)
+blockfaces$log_meter_count <- log(blockfaces$meter_count)
+
+sjsu_blue <- "#0055A2"
+sjsu_gold <- "#E5A823"
+sjsu_gray <- "#939597"
+sjsu_darkgray <- "#53565A"
+```
+
+```{r}
+#| echo: false
+#| label: fig-citation-dist
+#| fig-cap: "Distributions of Citation Rate per Meter (left) and log(citation_rate_per_meter + 1) (right)."
+#| fig-width: 10
+#| fig-height: 4.5
+#| out-width: "90%"
+par(mfrow = c(1, 2), mar = c(6, 4, 2, 1) + 0.1)
+hist(
+blockfaces$citation_rate_per_meter,
+main = "Distribution of Citation Rate per Meter",
+xlab = "Citation Rate per Meter",
+col = sjsu_blue,
+border = "white"
+)
+hist(
+blockfaces$log_rate,
+main = "log(citation_rate_per_meter + 1)",
+xlab = "log(citation_rate_per_meter + 1)",
+col = sjsu_gold,
+border = "white"
+)
+```
+
+The distribution of meter counts reveals a heavy right-skew, shown in @fig-meter-scatter. To combat this, we plan to train a model that uses $\log(\mathrm{meter\_count})$ as a predictor to better capture variation in meter density. In this scenario, we do not need to add 1 to meter_count as a blockface with no meters will not be in the dataset.
+
+```{r}
+#| echo: false
+#| label: fig-meter-scatter
+#| fig-cap: "Scatterplots of log citation rate versus meter density on the original (left) and log scale (right)."
+#| fig-width: 10
+#| fig-height: 4.5
+#| out-width: "90%"
+par(mfrow = c(1, 2), mar = c(6, 4, 2, 1) + 0.1)
+plot(
+  blockfaces$meter_count,
+  blockfaces$log_rate,
+  col = sjsu_blue,
+  pch = 16,
+  cex = 0.8,
+  xlab = "Meter Density (meters per blockface)",
+  ylab = "log(Citation Rate per Meter + 1)",
+  main = "Citation Rate vs. Meter Density"
+)
+plot(
+  blockfaces$log_meter_count,
+  blockfaces$log_rate,
+  col = sjsu_gold,
+  pch = 16,
+  cex = 0.8,
+  xlab = "log(Meter Density)",
+  ylab = "log(Citation Rate per Meter + 1)",
+  main = "log(Citation Rate per Meter + 1) vs. \nlog(Meter Density)"
+)
+```
+
+@fig-cap-districts shows the distribution of the two categorical predictors used in the regression model. Most blockfaces contain meters with a grey cap color, which represents general metered parking. This imbalance implies that coefficient estimates for smaller classes may be less accurate. The number of metered blockfaces also varies significantly across districts. Because blockfaces are spatially clustered, it is important to account for location-based differences in the analysis.
+
+```{r}
+#| echo: false
+#| label: fig-cap-districts
+#| fig-cap: "Distributions of Cap Colors Count (left) and Supervisor Districts Count (right)."
+#| fig-width: 10
+#| fig-height: 4.5
+#| out-width: "90%"
+par(mfrow = c(1, 2), mar = c(6, 4, 2, 1) + 0.1)
+cap_color_counts <- table(blockfaces$cap_color_majority)
+
+bar_midpoints_cap <- barplot(
+  cap_color_counts,
+  col = sjsu_blue,
+  border = "white",
+  main = "Majority Cap Color",
+  ylab = "Count",
+  las = 2,
+  ylim = c(0, max(cap_color_counts) * 1.1)
+)
+text(
+  x = bar_midpoints_cap,
+  y = cap_color_counts,
+  labels = cap_color_counts,
+  pos = 3
+)
+
+district_counts <- table(blockfaces$supervisor_district)
+
+bar_midpoints_district <- barplot(
+  district_counts,
+  col = sjsu_blue,
+  border = "white",
+  main = "Supervisor District Counts",
+  xlab = "District Number",
+  ylab = "Count",
+  ylim = c(0, max(district_counts) * 1.1)
+)
+text(
+  x = bar_midpoints_district,
+  y = district_counts,
+  labels = district_counts,
+  pos = 3
+)
+```
+
+# Methods
+
+To model the citation rate per meter, we use meter density (meter count) as the main predictor and also include the categorical variables cap color and supervisor district. Meter density is a reasonable predictor because blockfaces with more meters may exhibit higher turnover and potentially more violations, although it is not obvious whether citation rates per meter should increase or decrease as density rises. Cap color represents the meter rate zone, providing information about pricing and typical duration of stay. Supervisor district is included to account for potential location-based differences such as traffic or enforcement patterns.
+
+We perform multiple linear regression, fitting two models with the `lm()` function from the R programming language [@RCoreTeam2025]. The first model we explore is given by the following equation: $$
+\begin{aligned}
+\log(\mathrm{citation\_rate\_per\_meter}_i + 1)
+    &= \beta_0 + \beta_1\,\mathrm{meter\_count}_i  \\
+    &\quad + \sum_{j=1}^{5} \gamma_j C_{ij}
+      + \sum_{k=1}^{10} \delta_k D_{ik}
+      + \varepsilon_i, \\
+    &\qquad \text{for } i = 1, \dots, n.
+\end{aligned}
+$$ In this model, the predictors are meter density and the categorical variables cap color $C$ and supervisor district $D$. The intercept $\beta_0$ corresponds to the expected value of $\log(\mathrm{citation\_rate\_per\_meter} + 1)$ for a blockface in the reference categories (Black cap color and District 1) when the meter density is equal to $0$. Because blockfaces with zero meters are not meaningful in this context, the intercept is not interpretable but serves as a baseline to measure the effects of the predictors. The parameter $\beta_1$ represents the expected change in $\log(\mathrm{citation\_rate\_per\_meter} + 1)$ associated with one additional meter on a blockface, holding the cap color and district constant. For the categorical predictors, the coefficients $\gamma_j$ and $\delta_k$ represent the expected differences in $\log(\mathrm{citation\_rate\_per\_meter} + 1)$ between each cap color or district and their reference groups, holding all other variables constant. The random error term $\varepsilon_i$ captures the unexplained variability in the response.
+
+The second model we consider is given by the following equation: $$
+\begin{aligned}
+\log(\mathrm{citation\_rate\_per\_meter}_i + 1)
+    &= \beta_0 + \beta_1 \log(\mathrm{meter\_count}_i)  \\
+    &\quad + \sum_{j=1}^{5} \gamma_j C_{ij}
+      + \sum_{k=1}^{10} \delta_k D_{ik}
+      + \varepsilon_i, \\
+    &\qquad \text{for } i = 1, \dots, n.
+\end{aligned}
+$$ Again, we include the categorical variables cap color $C$ and supervisor district $D$, whose coefficients have the same interpretation as in the first model. In this model, we use $\log(\mathrm{meter\_count})$ as the main predictor to address the strong right-skew in meter density, creating a log–log model. The intercept $\beta_0$ now corresponds to the expected value of $\log(\mathrm{citation\_rate\_per\_meter} + 1)$ for a blockface in the reference categories when $\mathrm{meter\_count} = 1$ (since $\log(1) = 0$), providing a meaningful baseline value for the model. The parameter $\beta_1$ represents the expected percent change in the citation rate per meter associated with a $1\%$ increase in the meter density, holding cap color and supervisor district constant. As before, the random error term $\varepsilon_i$ captures the unexplained variability in the response.
+
+The regression model assumes linearity, meaning that the response is a linear function of the predictors. After the log transformation of the citation rate per meter, the linearity assumption seems to be reasonably satisfied.
+
+The linear regression model also assumes that the error terms are independent, have constant variance (homoscedasticity), have a mean of zero, and are approximately normally distributed. The independence assumption states that the observations should be unrelated. In this problem, nearby blockfaces may be spatially correlated, which could lead to correlated errors and represents a possible limitation. Because the linear regression model is estimated using the ordinary least squares method to minimize the sum of squared residuals, the residuals produced have a sample mean of zero by construction, satisfying the mean-of-zero assumption. The homoscedasticity and normality assumptions will be evaluated after fitting the model using diagnostic plots.
+
+# Results
+
+After training the models, we evaluate the results. For Model 1, using meter count on a blockface as the main predictor, the estimated coefficients are $\hat{\beta}_0 = 1.0630$ and $\hat{\beta}_1 = 0.01045$. This means that for each additional meter on the blockface, $\log(\mathrm{citation\ rate\ per\ meter} + 1)$ is expected to increase by $0.0104$, holding cap color and district constant. A $0.0104$ increase on the log scale corresponds to about a $1.05\%$ increase in $(\mathrm{citation\ rate\ per\ meter} + 1)$, indicating a small but positive association between meter density and citation rates. The $R^2$ value of this model is low at $0.1302$, which explains about $13\%$ of the variation in the response, meaning that most of the variability is unexplained by this model and other factors are involved.
+
+For Model 2, which uses $\log(\mathrm{meter\_count})$ as the main predictor, the estimated coefficients are $\hat{\beta}_0 = 0.93374$ and $\hat{\beta}_1 = 0.13392$. The intercept $\hat{\beta}_0$ implies that, for the baseline cap color and supervisor district, a blockface with exactly one meter is expected to have a citation rate per meter of approximately $1.54$ on the original scale. Holding cap color and district constant, $\hat{\beta}_1$ implies that a $1\%$ increase in the meter count is associated with about a $0.13392\%$ increase in $(\mathrm{citation\ rate\ per\ meter} + 1)$. The $R^2$ value of this model is $0.1343$, which is slightly higher than Model 1 but does not represent a meaningful improvement in explanatory power.
+
+For each of the models, we separate the data by cap color, then plot the fitted regression line for each cap color while holding the supervisor district fixed, as shown in @fig-cap-col-fitted. We do the same for the supervisor districts while holding cap color constant, which produces similar output. For each plot, the fitted lines share a common slope but differ in their intercepts, reflecting the categorical effects in the model. These differences indicate that cap color and supervisor district shift the baseline level of citations across rate zones and locations.
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-cap-col-fitted
+#| fig-cap: "Model 1 - Fitted Lines by Cap Color for Supervisor District 3."
+#| fig-width: 8
+#| fig-height: 4.5
+#| out-width: "90%"
+blockfaces$supervisor_district <- as.factor(blockfaces$supervisor_district)
+blockfaces$cap_color_majority <- as.factor(blockfaces$cap_color_majority)
+
+model_1 <- lm(log_rate ~ meter_count + cap_color_majority + supervisor_district, data=blockfaces)
+model_2 <- lm(log_rate ~ log_meter_count + cap_color_majority + supervisor_district, data=blockfaces)
+
+# build prediction grid for cap color
+grid_cap_col <- blockfaces %>%
+  group_by(cap_color_majority) %>%
+  summarize(
+    min_m = min(meter_count),
+    max_m = max(meter_count),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(meter_count = list(seq(min_m, max_m, length.out = 100))) %>%
+  unnest(meter_count) %>%
+  mutate(
+    log_meter_count = log(meter_count),
+    supervisor_district = factor(3, levels = levels(blockfaces$supervisor_district))
+  )
+
+grid_cap_col$pred_log_rate <- predict(model_1, newdata = grid_cap_col)
+
+cap_col_plot_1 <- ggplot(blockfaces, aes(x = meter_count, y = log_rate)) +
+  geom_point(alpha = 0.5, color = sjsu_blue) +
+  geom_line(data = grid_cap_col, aes(x = meter_count, y = pred_log_rate), color = "red") +
+  facet_wrap(~ cap_color_majority) +
+  xlab("Meter Density (meters per blockface)") +
+  ylab("log(Citation Rate per Meter + 1)") +
+  ggtitle("Model 1 Fitted Lines by Cap Color") +
+  theme_bw(base_size = 13) + theme(legend.position = "none")
+
+print(cap_col_plot_1)
+```
+
+We also plot the fitted values against the residuals for both models in @fig-resid-fitted. This plot reveals a funnel-shaped pattern with the spread of residuals increasing at higher fitted values. This suggests heteroscedasticity, which violates the equal variance assumption of linear regression. This may be caused by the response being log-transformed from a non-negative quantity, which limits how negative residuals can be. 
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-resid-fitted
+#| fig-cap: "Residuals versus fitted values from both regression models."
+#| fig-width: 8
+#| fig-height: 4.5
+#| out-width: "90%"
+residuals_1 <- residuals(model_1)
+residuals_2 <- residuals(model_2)
+
+# Residuals vs Fitted
+fitted_1 <- fitted(model_1)
+fitted_2 <- fitted(model_2)
+par(mfrow = c(1, 2))
+plot(fitted_1, residuals_1,
+     col = sjsu_blue,
+     main = "Residuals vs Fitted Values (Model 1)",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 16)
+abline(h = 0, lty = 2)
+plot(fitted_2, residuals_2,
+     col = sjsu_gold,
+     main = "Residuals vs Fitted Values (Model 2)",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 16)
+abline(h = 0, lty = 2)
+```
+
+For both models, the histogram of residuals shows a roughly normal distribution of residuals and the Q-Q plot shows the residuals lying close to the reference line, indicating that the normality assumption for residuals is satisfied (@fig-hist-qq).
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-hist-qq
+#| fig-cap: "Histogram and Q-Q plot of residuals from both regression models."
+#| fig-width: 8
+#| fig-height: 6
+#| out-width: "90%"
+par(mfrow = c(2, 2))
+
+# Histogram of residuals
+hist(residuals_1,
+     main = "Distribution of Residuals (Model 1)",
+     xlab = "Residual value",
+     col = sjsu_blue,
+     border = "white")
+
+# Q-Q plot of residuals
+qqnorm(residuals_1,
+       main = "Normal Q-Q Plot of Residuals 1 (Model 1)",
+       pch = 19,
+       col = sjsu_blue)
+qqline(residuals_1, lwd = 2)
+
+# Histogram of residuals
+hist(residuals_2,
+     main = "Distribution of Residuals (Model 2)",
+     xlab = "Residual value",
+     col = sjsu_gold,
+     border = "white")
+
+# Q-Q plot of residuals
+qqnorm(residuals_2,
+       main = "Normal Q-Q Plot of Residuals (Model 2)",
+       pch = 19,
+       col = sjsu_gold)
+qqline(residuals_1, lwd = 2)
+```
+
+# Discussion
+
+Model 2 shows a slightly improved fit over Model 1 and provides a more meaningful baseline due to the log-log specification. The log transformation of meter density also gives us a percent-change interpretation for the slope, which is more natural in this context because the effect of adding additional meters differs between low-density and high-density blockfaces. For these reasons, we chose Model 2 as our final model.
+
+The results indicate a small positive association between meter density and citation rate per meter. After controlling for cap color and supervisor district, blockfaces with more meters tend to have slightly higher citation rates per meter. However, the relatively low $R^2$ values suggest that meter density explains only a small portion of the variation in citation rate, and additional factors not included in this dataset likely play an important role. 
+
+The residual diagnostics also reveal some heteroscedasticity, violating the constant variance assumption. While the log transformation slightly improves the model fit, these diagnostics suggest that the linear regression model does not fully capture the underlying relationship in citation rates and meter density. 
+
+In future analyses, we could explore using weighted least squares regression to address the heteroscedasticity observed in the residuals. Additional predictors such as patrol activity or neighborhood traffic patterns may also help capture more of the variability in citation rates and improve overall model performance.
+
+# References
